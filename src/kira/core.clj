@@ -60,7 +60,10 @@
 
 (defn -main [& args]
   []
-  (let [coll '([1 2] [2 3] [3 4] [2 5] [2 8])]
+  (let [coll (->> (repeatedly 5 #(rand-int 24))
+                  set
+                  (partition 2 1)
+                  (map sort))]
     (println "INPUT:" coll)
     (println "Overlapped:"(overlap coll))
     (println "Overlapped with strict mode:" (overlap coll true))))
