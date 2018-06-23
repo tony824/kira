@@ -1,7 +1,10 @@
 (ns kira.core
   (:require [clj-time.coerce :as ct]
-            [clj-time.core :as t])
+            [clj-http.client :as client])
   (:import (org.joda.time DateTime)))
+
+(def distance-url "google.map.api.distance.url" "https://maps.googleapis.com/maps/api/distancematrix/json")
+(def api-key "googl-map-api-key") ;; use your own google-api-key here
 
 (defn date-time
   [x]
@@ -30,6 +33,36 @@
       (println (str "Unexpected error-" (.getMessage ^Exception e)))
       nil)))
 
+;; TODO add more params when calling google map api
+(defn get-duration
+  "Use google map api to calculate travel time in seconds"
+  [lat1 lng1 lat2 lng2]
+  (try
+    (let [{:keys [status body] :as response} (client/get distance-url {:query-params {:origins (str lat1 "," lng1)
+                                                                                      :destinations(str lat2 "," lng2)
+                                                                                      :key api-key}
+                                                                       :as :json
+                                                                       :throw-exceptions false})]
+      (when (= 200 status)
+        (-> body
+            :rows
+            first
+            :elements
+            first
+            :duration
+            :value
+            (/ 3600))))
+    (catch Exception e
+      (println (str "Exception occurred when calling google map api " (.getMessage ^Exception e))) 0)))
+
+(defn my-compare-v2
+  "Use map {:start 7 :end 9 :lng lng :lat lat}"
+  [strict-mode? e1 e2]
+  (let [{:keys [start end lng lat]} e1
+        {l2 :start r2 :end lng1 :lng lat1 :lat} e2
+        travel-time (get-duration lat lng lat1 lng1)]
+    (my-compare strict-mode? [start (+ travel-time end)] [l2 r2])))
+
 (defn overlapped?
   "Make events comparable before comparing"
   [strict-mode? & args]
@@ -57,6 +90,7 @@
                     (concat acc))]
          (recur (first r) (rest r) t))
        acc))))
+
 
 (defn -main [& args]
   []
